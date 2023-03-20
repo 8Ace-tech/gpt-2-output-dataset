@@ -11,19 +11,23 @@ from .download import download
 
 
 def load_texts(data_file, expected_size=None):
-    texts = []
-
-    for line in tqdm(open(data_file), total=expected_size, desc=f'Loading {data_file}'):
-        texts.append(json.loads(line)['text'])
-
-    return texts
+    return [
+        json.loads(line)['text']
+        for line in tqdm(
+            open(data_file), total=expected_size, desc=f'Loading {data_file}'
+        )
+    ]
 
 
 class Corpus:
     def __init__(self, name, data_dir='data', skip_train=False):
         download(name, data_dir=data_dir)
         self.name = name
-        self.train = load_texts(f'{data_dir}/{name}.train.jsonl', expected_size=250000) if not skip_train else None
+        self.train = (
+            None
+            if skip_train
+            else load_texts(f'{data_dir}/{name}.train.jsonl', expected_size=250000)
+        )
         self.test = load_texts(f'{data_dir}/{name}.test.jsonl', expected_size=5000)
         self.valid = load_texts(f'{data_dir}/{name}.valid.jsonl', expected_size=5000)
 
@@ -49,13 +53,12 @@ class EncodedDataset(Dataset):
             label = self.random.randint(2)
             texts = [self.fake_texts, self.real_texts][label]
             text = texts[self.random.randint(len(texts))]
+        elif index < len(self.real_texts):
+            text = self.real_texts[index]
+            label = 1
         else:
-            if index < len(self.real_texts):
-                text = self.real_texts[index]
-                label = 1
-            else:
-                text = self.fake_texts[index - len(self.real_texts)]
-                label = 0
+            text = self.fake_texts[index - len(self.real_texts)]
+            label = 0
 
         tokens = self.tokenizer.encode(text)
 
